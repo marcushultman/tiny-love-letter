@@ -3,6 +3,7 @@ import {
   Switch,
   Route,
   useParams,
+  Redirect
 } from "react-router-dom";
 
 import Start from './Start';
@@ -31,7 +32,7 @@ function GameWrapper() {
   let { token } = useParams<{ token: string }>();
   const me = localStorage.getItem('playerId');
   if(!me) {
-    return (<div></div>);
+    return (<Redirect to="/" />)
   }
   return (
     <div>
