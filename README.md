@@ -1,3 +1,24 @@
+# Schema
+
+Save JSON in KV-store on https://keyvalue.xyz/
+```
+type Action = {
+  index: number,
+  meta: GuardMeta | ...;
+};
+
+type State = {
+  seed: number,
+  numPlayers: number,
+  actions: Action[],
+};
+```
+
+Every hand is a FIFO. Length 1 on idle, 2 on active turn. `Action.index` indicates played card.
+`Action.meta` contains card specific data.
+```
+
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
