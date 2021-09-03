@@ -1,1 +1,17 @@
+.Game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
+.Game-vask {
+  display: flex;
+}
+
+.Game-played {
+  display: flex;
+}
+
+.Game-myhand {
+  display: flex;
+}

@@ -9,6 +9,6 @@ export interface Action {
 
 export interface State {
   seed: number;
-  numPlayers: number;
+  players: string[];
   actions: Action[];
 }

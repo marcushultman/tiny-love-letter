@@ -2,6 +2,7 @@ import {
   BrowserRouter as Router,
   Switch,
   Route,
+  useParams,
 } from "react-router-dom";
 
 import Start from './Start';
@@ -15,7 +16,7 @@ export default function Root() {
             renders the first one that matches the current URL. */}
         <Switch>
           <Route path="/:token">
-            <Game />
+            <GameWrapper />
           </Route>
           <Route path="/">
             <Start />
@@ -23,5 +24,14 @@ export default function Root() {
         </Switch>
       </div>
     </Router>
+  );
+}
+
+function GameWrapper() {
+  let { token } = useParams<{ token: string }>();
+  return (
+    <div>
+      <Game token={token} me="deadbeef" />
+    </div>
   );
 }
