@@ -1,13 +1,12 @@
 import React, { FormEvent } from 'react';
-import { createBrowserHistory } from 'history';
+import { withRouter, RouteComponentProps } from 'react-router-dom'   
 
 import { writeState } from './firebase';
 import { State } from './schema';
-import './Start.scss';
+import './Start.scss'; 
 
-class Start extends React.Component {
-
-  constructor(props: any) {
+class Start extends React.Component<RouteComponentProps> {
+  constructor(props: RouteComponentProps) {
     super(props);
     this.handleJoin = this.handleJoin.bind(this);
     this.handleCreate = this.handleCreate.bind(this);
@@ -21,7 +20,7 @@ class Start extends React.Component {
     
     const token = e.target[0].value;
     let playerId = this.getPlayerId();
-    createBrowserHistory().push(token);
+    this.props.history.push(token);
   }
 
   handleCreate = async (e: FormEvent) => {
@@ -39,7 +38,7 @@ class Start extends React.Component {
 
     await writeState(token, state);
 
-    createBrowserHistory().push(token);
+    this.props.history.push(token);
   }
 
   uuidv4() {
@@ -78,4 +77,4 @@ class Start extends React.Component {
   }
 }
 
-export default Start;
+export default withRouter(Start);
