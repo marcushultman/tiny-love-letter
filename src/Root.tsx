@@ -29,9 +29,13 @@ export default function Root() {
 
 function GameWrapper() {
   let { token } = useParams<{ token: string }>();
+  const me = localStorage.getItem('playerId');
+  if(!me) {
+    return (<div></div>);
+  }
   return (
     <div>
-      <Game token={token} me="deadbeef" />
+      <Game token={token} me={me} />
     </div>
   );
 }

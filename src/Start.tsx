@@ -1,5 +1,8 @@
 import React, { FormEvent } from 'react';
-import { writeUserData, readUserData } from './firebase';
+import { createBrowserHistory } from 'history';
+
+import { writeState } from './firebase';
+import { State } from './schema';
 import './Start.scss';
 
 class Start extends React.Component {
@@ -8,28 +11,52 @@ class Start extends React.Component {
     super(props);
     this.handleJoin = this.handleJoin.bind(this);
     this.handleCreate = this.handleCreate.bind(this);
+    
   }
 
-  handleJoin(e: FormEvent) {
+
+
+  handleJoin(e: any) {
     e.preventDefault();
-    // todo: join
-    console.log('join');
+    
+    const token = e.target[0].value;
+    let playerId = this.getPlayerId();
+    createBrowserHistory().push(token);
   }
 
-  handleCreate = (e: FormEvent) => {
-    console.log(e);
+  handleCreate = async (e: FormEvent) => {
     e.preventDefault();
 
-    writeUserData("123", "name!").then(() => {
+    const token = this.uuidv4();
 
-      readUserData("123").then(response => {
-        console.log("response", response);
-      })
+    let playerId = this.getPlayerId();
+
+    let state: State = {
+      seed: 1,
+      actions: [],
+      players: [playerId]
+    };
+
+    await writeState(token, state);
+
+    createBrowserHistory().push(token);
+  }
+
+  uuidv4() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
     });
+  }
 
+  getPlayerId() {
+    let playerId = localStorage.getItem('playerId');
+    if(!playerId) {
+      playerId = this.uuidv4();
+      localStorage.setItem('playerId', playerId);
+    }
 
-    // this.setState({ token });
-    // console.log('create', token);
+    return playerId;
   }
 
 

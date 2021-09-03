@@ -2,6 +2,7 @@ import { Component } from 'react';
 import './Game.scss';
 import { State } from './schema'
 import Card from './Card'
+import { readState } from './firebase';
 
 interface GameProps {
   me: string;
@@ -39,12 +40,8 @@ export default class Game extends Component<GameProps, GameState> {
   }
 
   async detectChange() {
-    const res = await fetch(`https://api.keyvalue.xyz/${this.props.token}/state`);
-    if (!res.ok) {
-      console.error('no game');
-      return;
-    }
-    const state = await res.json();
+
+    const state = await readState(this.props.token);
     this.setState({ loading: false, state });
 
     console.log({ state });
@@ -53,13 +50,14 @@ export default class Game extends Component<GameProps, GameState> {
   render() {
 
     let myHand;
-    if (this.state.state.actions.length % this.state.state.players.indexOf(this.props.me) === 0) {
+    console.log(this.state);
+    if (!this.state.loading && this.state.state.actions && this.state.state.actions.length % this.state.state.players.indexOf(this.props.me) === 0) {
       myHand =
       <div className="Game-myhand">
         <Card />
         <Card />
       </div>;
-    } else {
+    } else if(!this.state.loading) {
       myHand =
       <div className="Game-myhand">
         <Card />

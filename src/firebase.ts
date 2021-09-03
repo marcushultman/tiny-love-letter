@@ -1,6 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, get, child } from "firebase/database";
+import { State } from "./schema";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -20,17 +21,12 @@ const firebaseConfig = {
 // Initialize Firebase
 const firebase = initializeApp(firebaseConfig);
 
-const database = getDatabase();
-
-
-function writeUserData(tokenId: string, name: string) {
+function writeState(tokenId: string, state: State): Promise<void> {
   const db = getDatabase();
-  return set(ref(db, 'token/' + tokenId), {
-    username: name
-  });
+  return set(ref(db, 'token/' + tokenId), state);
 }
 
-function readUserData(tokenId: string) {
+function readState(tokenId: string): Promise<State> {
   const dbRef = ref(getDatabase());
   return get(child(dbRef, `token/${tokenId}`)).then((snapshot) => {
     return snapshot.val();
@@ -39,4 +35,4 @@ function readUserData(tokenId: string) {
   });
 }
 
-export { writeUserData, readUserData }
+export { writeState, readState }
