@@ -1,7 +1,7 @@
 import React, { FormEvent } from 'react';
 import { withRouter, RouteComponentProps } from 'react-router-dom'   
 
-import { writeState } from './firebase';
+import { writeState, readState } from './firebase';
 import { State } from './schema';
 import './Start.scss'; 
 
@@ -15,11 +15,16 @@ class Start extends React.Component<RouteComponentProps> {
 
 
 
-  handleJoin(e: any) {
+  async handleJoin(e: any) {
     e.preventDefault();
     
     const token = e.target[0].value;
     let playerId = this.getPlayerId();
+
+    const state = await readState(e.target[0].value);
+    state.players.push(playerId);
+    await writeState(token, state);
+
     this.props.history.push(token);
   }
 
@@ -31,7 +36,7 @@ class Start extends React.Component<RouteComponentProps> {
     let playerId = this.getPlayerId();
 
     let state: State = {
-      seed: 1,
+      seed: 42,
       actions: [],
       players: [playerId]
     };
