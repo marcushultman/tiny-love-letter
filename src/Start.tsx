@@ -1,25 +1,37 @@
-import React from 'react';
+import React, { FormEvent } from 'react';
+import { writeUserData, readUserData } from './firebase';
 import './Start.scss';
 
 class Start extends React.Component {
 
-  constructor() {
-    super();
+  constructor(props: any) {
+    super(props);
     this.handleJoin = this.handleJoin.bind(this);
     this.handleCreate = this.handleCreate.bind(this);
   }
 
-  handleJoin(e) {
+  handleJoin(e: FormEvent) {
     e.preventDefault();
     // todo: join
     console.log('join');
   }
 
-  handleCreate(e) {
+  handleCreate = (e: FormEvent) => {
+    console.log(e);
     e.preventDefault();
-    // todo: create
-    console.log('create');
+
+    writeUserData("123", "name!").then(() => {
+
+      readUserData("123").then(response => {
+        console.log("response", response);
+      })
+    });
+
+
+    // this.setState({ token });
+    // console.log('create', token);
   }
+
 
   render() { 
     return (
