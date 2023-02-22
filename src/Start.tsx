@@ -2,8 +2,8 @@ import React, { FormEvent } from 'react';
 import { withRouter, RouteComponentProps } from 'react-router-dom'   
 
 import { writeState, readState } from './firebase';
-import { State } from './schema';
-import './Start.scss'; 
+import { GameState } from './schema';
+import './Start.scss';
 
 class Start extends React.Component<RouteComponentProps> {
   constructor(props: RouteComponentProps) {
@@ -35,7 +35,7 @@ class Start extends React.Component<RouteComponentProps> {
 
     let playerId = this.getPlayerId();
 
-    let state: State = {
+    let state: GameState = {
       seed: 42,
       actions: [],
       players: [playerId]
@@ -64,7 +64,7 @@ class Start extends React.Component<RouteComponentProps> {
   }
 
 
-  render() { 
+  render() {
     return (
       <div className="Start">
         <header className="Start-header">

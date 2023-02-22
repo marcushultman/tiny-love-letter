@@ -1,61 +1,86 @@
-import { Component } from 'react';
+import React, { Component } from 'react';
 import './Game.scss';
-import { State } from './schema'
+import { GameState } from './schema'
 import { readState, writeState } from './firebase';
+import Snapshot, {
+  Card,
+  BARON,
+  COUNTESS,
+  GUARD,
+  HANDMAID,
+  KING,
+  PRIEST,
+  PRINCE,
+  PRINCESS,
+  Player,
+} from './Snapshot'
 
-import Card from './Card'
+import CardView from './CardView'
 import EmptyCard from './EmptyCard'
 import MultiCard from './MultiCard'
 
+import Modal from './modals/Modal'
+import GuardModal from './modals/GuardModal'
+import PriestModal from './modals/PriestModal'
+import BaronModal from './modals/BaronModal'
+import PrinceModal from './modals/PrinceModal'
+import KingModal from './modals/KingModal'
 interface GameProps {
   me: string;
   token: string;
 }
 
-interface GameState {
+interface State {
   loading: boolean;
-  state: State;
+  state: GameState;
+  selectedCardIndex: number | null;
 }
 
-function makeDeck(seed: number) {
-  return [0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 6, 7];
+function makeDeck(seed: number): Card<any>[] {
+  // return [GUARD, GUARD, GUARD, GUARD, GUARD, PRIEST, PRIEST, BARON, BARON, HANDMAID, HANDMAID, PRINCE, PRINCE, KING, COUNTESS, PRINCESS];
+  return [GUARD, GUARD, GUARD, KING, COUNTESS, PRINCESS, GUARD, GUARD, PRIEST, PRIEST, BARON, BARON, HANDMAID, HANDMAID, PRINCE, PRINCE];
 }
 
-function simulateActions(state: State) {
+function simulateActions(state: GameState): Snapshot {
   const numPlayers = state.players.length;
   const deck = makeDeck(state.seed);
   const vask = deck.shift()!;
   const extraVask = state.players.length === 2 ? [deck.shift()!, deck.shift()!, deck.shift()!] : [];
-  const snapshot = {
-    winner: null as number | null,
+  const snapshot: Snapshot = {
+    turn: 0,  // who starts?
     vask,
     extraVask,
-    players: state.players.map(id => ({ id, hand: [deck.shift()!], played: [] as number[] })),
-    turn: 0,
+    players: state.players.map(id => ({
+      id,
+      lost: false,
+      hand: [deck.shift()!],
+      played: []
+    })),
+    deck,
   };
   state.actions.forEach(action => {
-    if (!deck.length) {
+    const drawnCard = deck.shift();
+    if (!drawnCard) {
       return;
     }
     const player = snapshot.players[snapshot.turn % numPlayers];
-    player.hand.push(deck.shift()!);
-    const [card] = player.hand.splice(action.index, 1);
+    player.hand.push(drawnCard);
+    const [playedCard] = player.hand.splice(action.index, 1);
 
-    // if (card === 0 && action.meta.card === snapshot.players[action.meta.target].hand[0]) {
-    //   snapshot.winner = snapshot.turn;
-    // }
+    playedCard.applyAction(action.meta, snapshot);
 
-    player.played.push(card);
+    player.played.push(playedCard);
     ++snapshot.turn;
   });
   if (deck.length) {
     snapshot.players[snapshot.turn % numPlayers].hand.push(deck.shift()!);
   }
-  return Object.assign(snapshot, { remaining: deck });
+  return snapshot;
 }
 
-export default class Game extends Component<GameProps, GameState> {
+export default class Game extends Component<GameProps, State> {
   poll?: NodeJS.Timer;
+  modalRef: React.RefObject<Modal>;
 
   constructor(props: GameProps) {
     super(props);
@@ -66,7 +91,9 @@ export default class Game extends Component<GameProps, GameState> {
         players: [],
         actions: [],
       },
+      selectedCardIndex: null,
     };
+    this.modalRef = React.createRef();
   }
 
   componentDidMount() {
@@ -78,62 +105,80 @@ export default class Game extends Component<GameProps, GameState> {
     this.poll && clearInterval(this.poll);
   }
 
+  async getGameState(): Promise<GameState> {
+    return Object.assign({ actions: [] }, await readState(this.props.token));
+  }
+
   async detectChange() {
-    const state = Object.assign({ actions: [] }, await readState(this.props.token));
+    const state = await this.getGameState();
     this.setState({ loading: false, state });
+    console.log(state.actions.length);
   }
 
-  async playCard(index: number) {
-    const { token } = this.props;
-    const state = Object.assign({ actions: [] }, await readState(token));
+  async reset() {
+    const { state } = this.state;
+    Object.assign(state, { actions: [] });
+    this.setState({ state })
+    await writeState(this.props.token, state);
+  }
 
-    const { players } = simulateActions(state);
+  async playCard(cardIndex: number) {
+    const { players } = simulateActions(this.state.state);
     const me = players.find(player => player.id === this.props.me)!;
-    const card = me.hand[index];
-
-    if (card === 0) {
-      // guard
-    } else if (card === 1) {
-      // priest
-    } else if (card === 2) {
-      // baron, nop
-    } else if (card === 3) {
-      // handmaid, nop
-    } else if (card === 4) {
-      // prince
-    } else if (card === 5) {
-      // king
-    } else if (card === 5) {
-      // countess
-    } else if (card === 5) {
-      // princess
+    const card = me.hand[cardIndex];
+   
+    if (card.hasModal) {
+      this.setState({ selectedCardIndex: cardIndex });
+    } else {
+      const state = await this.getGameState();
+      state.actions.push({ index: cardIndex });
+      this.setState({ state });
+      await writeState(this.props.token, state);
     }
-
-    state.actions.push({ index, meta: '🎣' });
-    this.setState({ state });
-    await writeState(token, state);
   }
 
-  renderPlayed(cards: number[]) {
+  dismissModal() {
+    this.setState({ selectedCardIndex: null });
+  }
+
+  async onPlayed(meta: any) {
+    const index = this.state.selectedCardIndex!;
+    const state = await this.getGameState();
+    state.actions.push({ index, meta });
+    this.setState({ state, selectedCardIndex: null });
+    await writeState(this.props.token, state);
+  }
+
+  renderPlayed(cards: Card<any>[]) {
     return cards.length ? <MultiCard cards={ cards } /> : <EmptyCard />
   }
 
-  renderHand(me: { hand: number[] }) {
+  renderHand(me: { hand: Card<any>[] }) {
     if (me.hand.length === 2) {
       return <div>
         <h3>Your turn, play a card:</h3>
         <div className="Game-myhand">
-          <Card value={ me.hand[0] } onSelect={ () => this.playCard(0) } />
-          <Card value={ me.hand[1] } onSelect={ () => this.playCard(1) } />
+          <CardView card={ me.hand[0] } onSelect={ () => this.playCard(0) } />
+          <CardView card={ me.hand[1] } onSelect={ () => this.playCard(1) } />
         </div>
       </div>;
     }
     return <div>
       <h3>Waiting for other player...</h3>
       <div className="Game-myhand">
-        <Card value={ me.hand[0] } onSelect={ () => this.playCard(0) } />
+        <CardView card={ me.hand[0] } />
       </div>
     </div>;
+  }
+
+  renderWinner(players: Player[]) {
+    if (players.length > 1) {
+      return null;
+    }
+    return <div className="banner">
+      <div>{ players[0].id.substr(0, 4) } won!</div>
+      <button onClick={ () => this.reset() }>Play again</button>
+    </div>
   }
 
   render() {
@@ -143,29 +188,44 @@ export default class Game extends Component<GameProps, GameState> {
       return (<div className= "Game" >Waiting for more players...</div>);
     }
 
+    const { selectedCardIndex } = this.state;
     const snapshot = simulateActions(this.state.state);
-    const { players } = snapshot;
+    const { players, deck } = snapshot;
     const me = players.find(player => player.id === this.props.me)!;
 
+    const remainingPlayers = players.filter(player => !player.lost)
+
+    const selectedCard = selectedCardIndex !== null && me.hand[selectedCardIndex];
+    const onAbort = () => this.dismissModal();
+    const onDone = (meta: any) => this.onPlayed(meta);
+    const modalProps = { ref: this.modalRef as any, me, snapshot, onAbort, onDone };
+
     return (
-      <div className= "Game" >
+      <div className= "Game" onClick={ () => this.modalRef.current?.tryAbort() }>
         <div>#Players: { players.length }</div>
-        <button onClick={ () => writeState(this.props.token, Object.assign(this.state.state, { actions: [] })) }>Reset</button>
+        <button onClick={ () => this.reset() }>Reset</button>
         <div>{ JSON.stringify(this.state.state) }</div>
-        <div>{ JSON.stringify(snapshot) }</div>
+        <div>{ JSON.stringify({ ...snapshot, selectedCard }) }</div>
         <div className="Game-vask">
-          <Card value={ snapshot.vask } hidden={ true } />
-          { snapshot.extraVask.map((vask, i) => <Card key={ i } value={ vask }/>) }
+          <CardView card={ snapshot.vask } hidden={ true } />
+          { snapshot.extraVask.map((vask, i) => <CardView key={ i } card={ vask }/>) }
         </div>
-        <div className="Game-played">{
-          players.map((player, i) => (
+        <div className="Game-played">
+          <MultiCard cards={ deck } />
+          { players.map((player, i) => (
             <div key={ i }>
               <p>{ player.id === this.props.me ? <b>{ player.id.slice(0, 4) }</b> : player.id.slice(0, 4) }</p>
               { this.renderPlayed(player.played) }
             </div>
-          ))
-        }</div>
+          )) }
+        </div>
         { this.renderHand(me) }
+        { this.renderWinner(remainingPlayers) }
+        { selectedCard === GUARD && <GuardModal { ...modalProps } /> }
+        { selectedCard === PRIEST && <PriestModal { ...modalProps } /> }
+        { selectedCard === BARON && <BaronModal { ...modalProps } /> }
+        { selectedCard === PRINCE && <PrinceModal { ...modalProps } /> }
+        { selectedCard === KING && <KingModal { ...modalProps } /> }
       </div>
     );
   }

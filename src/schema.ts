@@ -4,10 +4,10 @@ export interface GuardMeta {
 
 export interface Action {
   index: number,
-  meta: GuardMeta | any;
+  meta?: GuardMeta | any;
 }
 
-export interface State {
+export interface GameState {
   seed: number;
   players: string[];
   actions: Action[];
